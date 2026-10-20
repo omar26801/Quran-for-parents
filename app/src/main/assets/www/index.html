@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>حفظ القرآن</title>
 <style>
-@font-face { font-family: 'Amiri Quran'; src: url('fonts/amiri-quran.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Uthmanic Hafs'; src: url('fonts/uthmanic-hafs.woff2') format('woff2'); font-weight: 400; }
 @font-face { font-family: 'Tajawal'; src: url('fonts/tajawal-500.woff2') format('woff2'); font-weight: 500; }
 @font-face { font-family: 'Tajawal'; src: url('fonts/tajawal-700.woff2') format('woff2'); font-weight: 700; }
 @font-face { font-family: 'Tajawal'; src: url('fonts/tajawal-800.woff2') format('woff2'); font-weight: 800; }
@@ -15,7 +15,7 @@
   --green: #1E5A3A; --green-deep: #123B25; --green-soft: #E6F0E9;
   --line: #E2DBCB; --edge: #6B6455; --warn: #8A2A12; --warn-soft: #FBE9E3;
   --ui: 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
-  --quran: 'Amiri Quran', 'Amiri', serif;
+  --quran: 'Uthmanic Hafs', serif;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; margin: 0; }
@@ -51,28 +51,27 @@ button:focus-visible { outline: 4px solid #C77700; outline-offset: 3px; }
 .row.on { border: 3px solid var(--green); background: var(--green-soft); }
 .row.on .badge { background: var(--green); color: #FFFFFF; }
 
-.reader-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-top: 16px; padding-bottom: 16px; }
-.ayah-card { margin-top: auto; margin-bottom: auto; background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 26px 16px; min-height: 220px; display: flex; align-items: center; justify-content: center; text-align: center; }
-.ayah { margin: 0; font-family: var(--quran); font-size: 44px; line-height: 2.1; color: #111111; }
-.ayah.mid { font-size: 36px; line-height: 2; }
-.ayah.long { font-size: 30px; line-height: 1.95; }
-.ayah .mark { color: var(--green); white-space: nowrap; }
+.reader-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding-top: 12px; padding-bottom: 12px; }
+/* The card takes all the free height; fitAyah() shrinks the font until the whole ayah fits inside it. */
+.ayah-card { flex: 1; min-height: 0; overflow-y: auto; background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 14px 12px; display: flex; text-align: center; }
+.ayah { margin: auto; font-family: var(--quran); font-size: 46px; line-height: 1.75; color: #111111; overflow-wrap: break-word; }
 .ayah-card.reading { border-color: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
-.meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 22px; font-weight: 700; color: var(--ink2); }
+.meta { display: flex; justify-content: center; align-items: center; gap: 4px 14px; flex-wrap: wrap; font-size: 20px; font-weight: 700; color: var(--ink2); }
 .meta .rep { color: var(--green); }
 .notice { border-radius: 16px; padding: 12px 16px; font-size: 21px; font-weight: 700; line-height: 1.5; background: var(--green-soft); color: var(--green); }
 .notice.error { background: var(--warn-soft); color: var(--warn); }
 
-.repeat { padding-bottom: 14px; display: flex; flex-direction: column; gap: 10px; }
-.label { font-size: 22px; font-weight: 700; color: var(--ink2); }
+.repeat { padding-bottom: 10px; display: flex; align-items: center; gap: 12px; }
+.repeat .seg { flex: 1; }
+.label { flex: none; font-size: 22px; font-weight: 700; color: var(--ink2); }
 .seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.seg button { height: 72px; border: 2px solid var(--edge); border-radius: 18px; background: var(--card); font-size: 26px; font-weight: 700; }
+.seg button { height: 58px; border: 2px solid var(--edge); border-radius: 18px; background: var(--card); font-size: 26px; font-weight: 700; }
 .seg button[aria-pressed="true"] { border: 3px solid var(--green); background: var(--green); color: #FFFFFF; font-weight: 800; }
 
-.controls { padding-top: 14px; padding-bottom: 22px; border-top: 2px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.nav { width: 96px; height: 96px; border: 2px solid var(--edge); border-radius: 20px; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 19px; font-weight: 700; }
+.controls { padding-top: 12px; padding-bottom: 16px; border-top: 2px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.nav { width: 92px; height: 84px; border: 2px solid var(--edge); border-radius: 20px; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 19px; font-weight: 700; }
 .nav:disabled { opacity: .4; cursor: default; }
-.play { width: 120px; height: 120px; border: none; border-radius: 60px; background: var(--green); color: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 0 var(--green-deep); }
+.play { width: 104px; height: 104px; border: none; border-radius: 52px; background: var(--green); color: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 0 var(--green-deep); }
 .play:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--green-deep); }
 @media (prefers-reduced-motion: reduce) { .tile:active, .play:active { transform: none; } }
 </style>
@@ -102,21 +101,22 @@ button:focus-visible { outline: 4px solid #C77700; outline-offset: 3px; }
   </section>
 
   <section class="screen" id="reader" hidden>
-    <header class="head pad">
+    <header class="head pad" style="padding-top: 10px; padding-bottom: 10px">
       <button class="btn-plain" id="back">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
         رجوع
       </button>
-      <h1 class="title" id="surahTitle" style="flex: 1; min-width: 0; text-align: center; font-size: 28px; line-height: 1.3"></h1>
-      <span style="width: 60px; flex: none" aria-hidden="true"></span>
+      <div style="flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; gap: 2px">
+        <h1 class="title" id="surahTitle" style="font-size: 27px; line-height: 1.25"></h1>
+        <div class="meta"><span id="pos"></span><span class="rep" id="repLabel"></span></div>
+      </div>
     </header>
     <div class="reader-body pad">
-      <div class="ayah-card" id="ayahCard"><p class="ayah" id="ayah"></p></div>
-      <div class="meta"><span id="pos"></span><span class="rep" id="repLabel"></span></div>
       <div class="notice" id="notice" hidden></div>
+      <div class="ayah-card" id="ayahCard"><p class="ayah" id="ayah"></p></div>
     </div>
     <div class="repeat pad">
-      <div class="label">تكرار كل آية</div>
+      <div class="label">التكرار</div>
       <div class="seg">
         <button id="once" aria-pressed="false">مرة واحدة</button>
         <button id="three" aria-pressed="true">٣ مرات</button>
@@ -139,8 +139,10 @@ button:focus-visible { outline: 4px solid #C77700; outline-offset: 3px; }
 
 <script src="quran.js"></script>
 <script>
-// Per-ayah recordings of Abdullah Basfar from everyayah.com; files are named SSSAAA.mp3.
+// Per-ayah recordings of Abdullah Basfar (everyayah.com), named SSSAAA.mp3. The build bundles them under audio/
+// so the app works offline; the online copies are only a fallback if a bundled file is missing.
 var AUDIO_BASES = [
+  'audio/',
   'https://everyayah.com/data/Abdullah_Basfar_64kbps/',
   'https://everyayah.com/data/Abdullah_Basfar_192kbps/'
 ];
@@ -176,7 +178,7 @@ var baseIdx = 0;
 function itemsFor(surah) {
   var verses = window.QURAN[surah - 1][1];
   var items = [];
-  if (surah !== 1 && surah !== 9) items.push({ text: window.QURAN[0][1][0], num: 0, s: 1, a: 1 });
+  if (surah !== 1 && surah !== 9) items.push({ text: window.QURAN[0][1][0].replace(/[\s\u00a0]*[٠-٩]+$/, ''), num: 0, s: 1, a: 1 });
   verses.forEach(function (t, i) { items.push({ text: t, num: i + 1, s: surah, a: i + 1 }); });
   return items;
 }
@@ -188,7 +190,7 @@ function show(id) {
   ['home', 'edit', 'reader'].forEach(function (s) { $(s).hidden = s !== id; });
   if (id === 'home') renderGrid();
   if (id === 'edit') renderList();
-  if (id === 'reader') renderReader();
+  if (id === 'reader') { $('ayah').textContent = ''; renderReader(); }
   window.scrollTo(0, 0);
 }
 
@@ -249,14 +251,9 @@ function renderReader() {
   $('surahTitle').textContent = 'سورة ' + window.QURAN[state.surah - 1][0];
 
   var p = $('ayah');
-  var len = item.text.length;
-  p.className = 'ayah' + (len > 260 ? ' long' : len > 120 ? ' mid' : '');
-  p.textContent = item.text + ' ';
-  if (item.num) {
-    var mark = document.createElement('span');
-    mark.className = 'mark';
-    mark.textContent = '﴿' + ar(item.num) + '﴾';
-    p.appendChild(mark);
+  if (p.textContent !== item.text) {
+    p.textContent = item.text;
+    fitAyah();
   }
 
   $('pos').textContent = item.num ? 'الآية ' + ar(item.num) + ' من ' + ar(total) : 'البسملة';
@@ -271,18 +268,26 @@ function renderReader() {
   $('next').disabled = state.idx >= items.length - 1;
 
   var n = $('notice');
-  if (state.error) {
+  if (n.hidden === state.error) {
     n.className = 'notice error';
-    n.textContent = 'تعذّر تشغيل الصوت. تأكد من اتصال الإنترنت ثم اضغط زر التشغيل.';
-    n.hidden = false;
-  } else if (state.playing && state.loading) {
-    n.className = 'notice';
-    n.textContent = 'جاري تحميل التلاوة…';
-    n.hidden = false;
-  } else {
-    n.hidden = true;
+    n.textContent = 'تعذّر تشغيل صوت هذه الآية. اضغط زر التشغيل مرة ثانية.';
+    n.hidden = !state.error;
+    fitAyah();
   }
-  $('ayahCard').parentNode.scrollTop = 0;
+}
+
+// Largest font size (46px down to 24px) at which the whole ayah fits in the card. The few ayahs too long
+// even at 24px (such as Al-Baqarah 282) scroll inside the card, following the recitation.
+function fitAyah() {
+  if (state.screen !== 'reader') return;
+  var card = $('ayahCard'), p = $('ayah');
+  var size = 46;
+  p.style.fontSize = size + 'px';
+  while (size > 24 && card.scrollHeight > card.clientHeight + 1) {
+    size -= 2;
+    p.style.fontSize = size + 'px';
+  }
+  card.scrollTop = 0;
 }
 
 function remember() {
@@ -319,6 +324,11 @@ function step(delta) {
   if (state.playing) playCurrent(); else renderReader();
 }
 
+audio.addEventListener('timeupdate', function () {
+  var card = $('ayahCard');
+  var range = card.scrollHeight - card.clientHeight;
+  if (range > 1 && audio.duration) card.scrollTop = range * Math.min(1, audio.currentTime / audio.duration);
+});
 audio.addEventListener('playing', function () {
   if (state.loading) { state.loading = false; renderReader(); }
 });
@@ -377,6 +387,10 @@ window.handleBack = function () {
 window.appPaused = function () {
   if (state.playing) { stop(); renderReader(); }
 };
+
+window.addEventListener('resize', fitAyah);
+// The Quran font loads only when first used, so load it up front and refit once it is ready.
+if (document.fonts && document.fonts.load) document.fonts.load("46px 'Uthmanic Hafs'", 'بسم').then(fitAyah, function () {});
 
 show('home');
 </script>

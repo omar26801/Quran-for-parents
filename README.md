@@ -5,7 +5,8 @@
 - جدول السور: مربعات كبيرة، ويمكن إضافة السور أو إزالتها.
 - تظهر آية واحدة فقط على الشاشة أثناء التلاوة.
 - تكرار كل آية: مرة واحدة أو ٣ مرات.
-- القارئ: عبدالله بصفر (التلاوة من everyayah.com، وتحتاج اتصال إنترنت).
+- القارئ: عبدالله بصفر. التلاوة مضمّنة في التطبيق، فيعمل بدون إنترنت.
+- نص الآيات من مصحف المدينة النبوية (مجمع الملك فهد لطباعة المصحف الشريف) بخطه العثماني.
 
 ## التحميل
 
@@ -21,6 +22,6 @@ gradle assembleDebug
 
 ## المصادر
 
-- نص القرآن (الرسم العثماني): [quran-json](https://github.com/risan/quran-json) (CC-BY-4.0)، عن موسوعة القرآن الكريم quranenc.com.
-- الخطوط: Amiri Quran و Tajawal (SIL Open Font License).
-- التلاوة: [everyayah.com](https://everyayah.com).
+- نص القرآن وخط العرض: رواية حفص، الإصدار ١٨، من [مجمع الملك فهد لطباعة المصحف الشريف](https://qurancomplex.gov.sa/en/techquran/dev/) عبر [quran-data-kfgqpc](https://github.com/thetruetruth/quran-data-kfgqpc).
+- خط الواجهة: Tajawal (SIL Open Font License).
+- التلاوة: [everyayah.com](https://everyayah.com)، تُحمَّل أثناء البناء عبر `scripts/fetch-audio.mjs`.

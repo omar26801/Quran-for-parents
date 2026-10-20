@@ -10,13 +10,28 @@ android {
         applicationId 'com.omar.quranhifz'
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName '1.1'
+    }
+
+    // One fixed key for every build, so a new APK installs over the old one on the phone.
+    // It only identifies this sideloaded app; it is not a Play Store key.
+    signingConfigs {
+        app {
+            storeFile rootProject.file('keystore/app.jks')
+            storePassword 'quranhifz'
+            keyAlias 'quranhifz'
+            keyPassword 'quranhifz'
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.app
+        }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.app
         }
     }
 
