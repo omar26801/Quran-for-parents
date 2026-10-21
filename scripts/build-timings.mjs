@@ -9,9 +9,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 
+// App reciter id -> quran-align file (named after the everyayah.com folder it was timed on).
 const RECITERS = {
-  basfar: (n) => /basfar/i.test(n) && !/mujawwad/i.test(n),
-  husary: (n) => /husary/i.test(n) && !/muallim|mujawwad|warsh/i.test(n),
+  husary_muallim: 'Husary_Muallim_128kbps.json',
+  husary: 'Husary_64kbps.json',
+  minshawy_murattal: 'Minshawy_Murattal_128kbps.json',
+  minshawy_mujawwad: 'Minshawy_Mujawwad_192kbps.json',
+  abdulbasit_murattal: 'Abdul_Basit_Murattal_64kbps.json',
+  abdulbasit_mujawwad: 'Abdul_Basit_Mujawwad_128kbps.json',
+  alafasy: 'Alafasy_128kbps.json',
+  sudais: 'Abdurrahmaan_As-Sudais_192kbps.json',
+  shuraim: 'Saood_ash-Shuraym_128kbps.json',
+  shatri: 'Abu_Bakr_Ash-Shaatree_128kbps.json',
+  rifai: 'Hani_Rifai_192kbps.json',
+  tablawi: 'Mohammad_al_Tablaway_128kbps.json',
 };
 const NUM_RE = /[\s ]*[٠-٩]+$/;
 
@@ -30,9 +41,9 @@ if (!jsons.length) { console.error('no quran-align .json files found'); process.
 const outDir = 'app/src/main/assets/www/timings';
 fs.mkdirSync(outDir, { recursive: true });
 
-for (const [rid, matches] of Object.entries(RECITERS)) {
-  const file = jsons.filter((f) => matches(path.basename(f))).sort()[0];
-  if (!file) { console.log(`${rid}: no timing file, highlighting off`); continue; }
+for (const [rid, name] of Object.entries(RECITERS)) {
+  const file = jsons.find((f) => path.basename(f) === name);
+  if (!file) { console.log(`${rid}: ${name} missing, highlighting off`); continue; }
   const data = JSON.parse(fs.readFileSync(file, 'utf8'));
   const out = QURAN.map((s) => s[1].map(() => 0));
   let kept = 0, dropped = 0;

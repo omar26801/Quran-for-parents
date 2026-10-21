@@ -165,12 +165,23 @@ button:focus-visible { outline: 4px solid #C77700; outline-offset: 3px; }
 
 <script src="quran.js"></script>
 <script>
-// Per-ayah recordings from everyayah.com, named SSSAAA.mp3. Audio streams from the first folder that has the
-// file, unless the surah was downloaded into the app (then it is served from audio/<reciter>/ and works offline).
+// Per-ayah recordings from everyayah.com, named SSSAAA.mp3. Each folder is the recording quran-align timed, so the
+// word timings match it. Audio streams from everyayah, unless the surah was downloaded into the app (then it is served from audio/<reciter>/ and works offline).
 var RECITERS = {
-  basfar: { name: 'عبدالله بصفر', folders: ['Abdullah_Basfar_32kbps', 'Abdullah_Basfar_64kbps', 'Abdullah_Basfar_192kbps'] },
-  husary: { name: 'محمود خليل الحصري', folders: ['Husary_64kbps', 'Husary_128kbps'] }
+  husary_muallim: { name: 'محمود خليل الحصري (المعلّم)', folders: ['Husary_Muallim_128kbps'] },
+  husary: { name: 'محمود خليل الحصري (مرتّل)', folders: ['Husary_64kbps'] },
+  minshawy_murattal: { name: 'محمد صديق المنشاوي (مرتّل)', folders: ['Minshawy_Murattal_128kbps'] },
+  minshawy_mujawwad: { name: 'محمد صديق المنشاوي (مجوّد)', folders: ['Minshawy_Mujawwad_192kbps'] },
+  abdulbasit_murattal: { name: 'عبدالباسط عبدالصمد (مرتّل)', folders: ['Abdul_Basit_Murattal_64kbps'] },
+  abdulbasit_mujawwad: { name: 'عبدالباسط عبدالصمد (مجوّد)', folders: ['Abdul_Basit_Mujawwad_128kbps'] },
+  alafasy: { name: 'مشاري راشد العفاسي', folders: ['Alafasy_128kbps'] },
+  sudais: { name: 'عبدالرحمن السديس', folders: ['Abdurrahmaan_As-Sudais_192kbps'] },
+  shuraim: { name: 'سعود الشريم', folders: ['Saood_ash-Shuraym_128kbps'] },
+  shatri: { name: 'أبو بكر الشاطري', folders: ['Abu_Bakr_Ash-Shaatree_128kbps'] },
+  rifai: { name: 'هاني الرفاعي', folders: ['Hani_Rifai_192kbps'] },
+  tablawi: { name: 'محمد الطبلاوي', folders: ['Mohammad_al_Tablaway_128kbps'] }
 };
+var DEFAULT_RECITER = 'husary_muallim';
 var DEFAULT_SURAHS = [1, 103, 108, 112, 113, 114];
 var NUM_RE = /[\s ]*[٠-٩]+$/;
 var bridge = window.AndroidApp || null;
@@ -191,7 +202,7 @@ var state = {
   screen: 'home',
   selected: load('selectedSurahs', DEFAULT_SURAHS),
   repeat: load('repeat', 3) === 1 ? 1 : 3,
-  reciter: RECITERS[load('reciter', 'basfar')] ? load('reciter', 'basfar') : 'basfar',
+  reciter: RECITERS[load('reciter', DEFAULT_RECITER)] ? load('reciter', DEFAULT_RECITER) : DEFAULT_RECITER,
   places: load('places', {}),   // last ayah index reached in each surah
   surah: 1, idx: 0, rep: 1,
   playing: false, error: false
