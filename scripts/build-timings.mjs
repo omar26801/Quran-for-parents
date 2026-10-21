@@ -38,13 +38,37 @@ const jsons = walk(process.argv[2] || 'align').filter((f) => f.endsWith('.json')
 console.log('timing files:', jsons.map((f) => path.basename(f)).join(', ') || 'none');
 if (!jsons.length) { console.error('no quran-align .json files found'); process.exit(1); }
 
+// Some quran-align files have the aligner's crash messages pasted into the middle of the JSON array
+// (Sudais does), so if the file does not parse, keep every ayah object that does.
+function readEntries(text) {
+  try { return JSON.parse(text); } catch {}
+  const entries = [];
+  const starts = /\{\s*"surah"/g;
+  let m, from = 0;
+  while ((m = starts.exec(text))) {
+    if (m.index < from) continue;
+    let depth = 0;
+    for (let i = m.index; i < text.length; i++) {
+      if (text[i] === '{') depth++;
+      else if (text[i] === '}' && --depth === 0) {
+        try {
+          entries.push(JSON.parse(text.slice(m.index, i + 1)));
+          from = i + 1;
+        } catch {}
+        break;
+      }
+    }
+  }
+  return entries;
+}
+
 const outDir = 'app/src/main/assets/www/timings';
 fs.mkdirSync(outDir, { recursive: true });
 
 for (const [rid, name] of Object.entries(RECITERS)) {
   const file = jsons.find((f) => path.basename(f) === name);
   if (!file) { console.log(`${rid}: ${name} missing, highlighting off`); continue; }
-  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const data = readEntries(fs.readFileSync(file, 'utf8'));
   const out = QURAN.map((s) => s[1].map(() => 0));
   let kept = 0, dropped = 0;
   for (const entry of data) {
