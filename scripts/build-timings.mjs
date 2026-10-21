@@ -25,6 +25,7 @@ function walk(dir) {
 }
 const jsons = walk(process.argv[2] || 'align').filter((f) => f.endsWith('.json'));
 console.log('timing files:', jsons.map((f) => path.basename(f)).join(', ') || 'none');
+if (!jsons.length) { console.error('no quran-align .json files found'); process.exit(1); }
 
 const outDir = 'app/src/main/assets/www/timings';
 fs.mkdirSync(outDir, { recursive: true });

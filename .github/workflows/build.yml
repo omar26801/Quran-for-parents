@@ -33,7 +33,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p align
-          gh release download -R cpfair/quran-align -D align || echo "could not download quran-align data"
+          gh release list -R cpfair/quran-align --limit 5
+          gh release download -R cpfair/quran-align -D align --pattern '*'
           for z in align/*.zip; do [ -f "$z" ] && unzip -q -o "$z" -d align; done
           ls -la align
           node scripts/build-timings.mjs align
