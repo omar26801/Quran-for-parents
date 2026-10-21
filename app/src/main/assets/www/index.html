@@ -52,9 +52,18 @@ button:focus-visible { outline: 4px solid #C77700; outline-offset: 3px; }
 .row.on .badge { background: var(--green); color: #FFFFFF; }
 
 .reader-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding-top: 12px; padding-bottom: 12px; }
-/* The card takes all the free height; fitAyah() shrinks the font until the whole ayah fits inside it. */
-.ayah-card { flex: 1; min-height: 0; overflow-y: auto; background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 14px 12px; display: flex; text-align: center; }
-.ayah { margin: auto; font-family: var(--quran); font-size: 46px; line-height: 1.75; color: #111111; overflow-wrap: break-word; }
+/* The card takes all the free height. The font size is fixed; a long ayah scrolls inside the card, following the reciter. */
+.ayah-card { position: relative; flex: 1; min-height: 0; overflow-y: auto; background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 14px 12px; display: flex; text-align: center; }
+.ayah { margin: auto; font-family: var(--quran); font-size: 44px; line-height: 1.9; color: #111111; overflow-wrap: break-word; }
+.ayah .w { border-radius: 10px; padding: 0 2px; transition: background-color .15s, color .15s; }
+.ayah .w.on { color: var(--green); background: #FFE9A8; }
+.progress { padding-top: 10px; }
+.bar { height: 14px; border-radius: 7px; background: var(--line); overflow: hidden; }
+.fill { height: 100%; width: 0; background: var(--green); border-radius: 7px; transition: width .3s; }
+.dl { width: 100%; min-height: 56px; padding: 8px 14px; border: 2px solid var(--green); border-radius: 16px; background: var(--green-soft); color: var(--green); font-size: 21px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.dl:disabled { cursor: default; }
+.dl.error { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+.reciter-btn { width: 100%; justify-content: space-between; height: 64px; font-size: 22px; }
 .ayah-card.reading { border-color: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
 .meta { display: flex; justify-content: center; align-items: center; gap: 4px 14px; flex-wrap: wrap; font-size: 20px; font-weight: 700; color: var(--ink2); }
 .meta .rep { color: var(--green); }
@@ -73,16 +82,19 @@ button:focus-visible { outline: 4px solid #C77700; outline-offset: 3px; }
 .nav:disabled { opacity: .4; cursor: default; }
 .play { width: 104px; height: 104px; border: none; border-radius: 52px; background: var(--green); color: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 0 var(--green-deep); }
 .play:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--green-deep); }
-@media (prefers-reduced-motion: reduce) { .tile:active, .play:active { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tile:active, .play:active { transform: none; } .fill, .ayah .w { transition: none; } }
 </style>
 </head>
 <body>
 <div class="app">
 
   <section class="screen" id="home">
-    <header class="head pad" style="flex-direction: column; align-items: flex-start; gap: 4px">
+    <header class="head pad" style="flex-direction: column; align-items: stretch; gap: 10px">
       <h1 class="title">حفظ القرآن</h1>
-      <div class="sub">القارئ: عبدالله بصفر</div>
+      <button class="btn-plain reciter-btn" id="reciterBtn">
+        <span id="reciterName"></span>
+        <span style="color: var(--green)">تغيير</span>
+      </button>
     </header>
     <div class="scroll pad">
       <div class="grid" id="grid"></div>
@@ -100,6 +112,16 @@ button:focus-visible { outline: 4px solid #C77700; outline-offset: 3px; }
     </div>
   </section>
 
+  <section class="screen" id="reciters" hidden>
+    <header class="head pad" style="justify-content: space-between">
+      <h1 class="title" style="color: var(--ink); font-size: 31px">اختيار القارئ</h1>
+      <button class="btn-green" id="recitersDone">تم</button>
+    </header>
+    <div class="scroll pad">
+      <div class="list" id="reciterList"></div>
+    </div>
+  </section>
+
   <section class="screen" id="reader" hidden>
     <header class="head pad" style="padding-top: 10px; padding-bottom: 10px">
       <button class="btn-plain" id="back">
@@ -111,7 +133,11 @@ button:focus-visible { outline: 4px solid #C77700; outline-offset: 3px; }
         <div class="meta"><span id="pos"></span><span class="rep" id="repLabel"></span></div>
       </div>
     </header>
+    <div class="progress pad">
+      <div class="bar" role="progressbar" aria-label="التقدم في السورة" aria-valuemin="0" aria-valuemax="100" id="bar"><div class="fill" id="fill"></div></div>
+    </div>
     <div class="reader-body pad">
+      <button class="dl" id="dlBtn" hidden></button>
       <div class="notice" id="notice" hidden></div>
       <div class="ayah-card" id="ayahCard"><p class="ayah" id="ayah"></p></div>
     </div>
@@ -139,19 +165,21 @@ button:focus-visible { outline: 4px solid #C77700; outline-offset: 3px; }
 
 <script src="quran.js"></script>
 <script>
-// Per-ayah recordings of Abdullah Basfar (everyayah.com), named SSSAAA.mp3. The build bundles them under audio/
-// so the app works offline; the online copies are only a fallback if a bundled file is missing.
-var AUDIO_BASES = [
-  'audio/',
-  'https://everyayah.com/data/Abdullah_Basfar_64kbps/',
-  'https://everyayah.com/data/Abdullah_Basfar_192kbps/'
-];
+// Per-ayah recordings from everyayah.com, named SSSAAA.mp3. Audio streams from the first folder that has the
+// file, unless the surah was downloaded into the app (then it is served from audio/<reciter>/ and works offline).
+var RECITERS = {
+  basfar: { name: 'عبدالله بصفر', folders: ['Abdullah_Basfar_32kbps', 'Abdullah_Basfar_64kbps', 'Abdullah_Basfar_192kbps'] },
+  husary: { name: 'محمود خليل الحصري', folders: ['Husary_64kbps', 'Husary_128kbps'] }
+};
 var DEFAULT_SURAHS = [1, 103, 108, 112, 113, 114];
+var NUM_RE = /[\s ]*[٠-٩]+$/;
+var bridge = window.AndroidApp || null;
 
 var PLAY_SVG = '<svg width="56" height="56" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"></path></svg>';
 var PAUSE_SVG = '<svg width="52" height="52" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>';
 var PLUS_SVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>';
 var CHECK_SVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L19 7"></path></svg>';
+var DOWNLOAD_SVG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>';
 
 function ar(n) { return String(n).replace(/[0-9]/g, function (d) { return '٠١٢٣٤٥٦٧٨٩'[d]; }); }
 function pad3(n) { return ('00' + n).slice(-3); }
@@ -163,38 +191,101 @@ var state = {
   screen: 'home',
   selected: load('selectedSurahs', DEFAULT_SURAHS),
   repeat: load('repeat', 3) === 1 ? 1 : 3,
+  reciter: RECITERS[load('reciter', 'basfar')] ? load('reciter', 'basfar') : 'basfar',
   places: load('places', {}),   // last ayah index reached in each surah
   surah: 1, idx: 0, rep: 1,
-  playing: false, loading: false, error: false
+  playing: false, error: false
 };
 
 var audio = new Audio();
 audio.preload = 'auto';
 var preloader = new Audio();
 preloader.preload = 'auto';
-var baseIdx = 0;
+var sourceIdx = 0;     // which of sourcesFor(item) is playing
+var downloads = {};    // 'reciter:surah' -> { done, total, failed, running }
 
 // The items shown one at a time: the basmala before every surah except Al-Fatiha (where it is ayah 1) and At-Tawbah, then each ayah.
 function itemsFor(surah) {
   var verses = window.QURAN[surah - 1][1];
   var items = [];
-  if (surah !== 1 && surah !== 9) items.push({ text: window.QURAN[0][1][0].replace(/[\s\u00a0]*[٠-٩]+$/, ''), num: 0, s: 1, a: 1 });
+  if (surah !== 1 && surah !== 9) items.push({ text: window.QURAN[0][1][0].replace(NUM_RE, ''), num: 0, s: 1, a: 1 });
   verses.forEach(function (t, i) { items.push({ text: t, num: i + 1, s: surah, a: i + 1 }); });
   return items;
 }
-function urlFor(item, base) { return AUDIO_BASES[base] + pad3(item.s) + pad3(item.a) + '.mp3'; }
+function fileFor(item) { return pad3(item.s) + pad3(item.a) + '.mp3'; }
+function filesFor(surah) { return itemsFor(surah).map(fileFor); }
+function onlineBases(rid) { return RECITERS[rid].folders.map(function (f) { return 'https://everyayah.com/data/' + f + '/'; }); }
+function sourcesFor(item) {
+  var list = [];
+  if (isDownloaded(state.reciter, state.surah)) list.push('audio/' + state.reciter + '/' + fileFor(item));
+  return list.concat(onlineBases(state.reciter).map(function (b) { return b + fileFor(item); }));
+}
+
+// ---- downloads (only inside the Android app)
+function dlKey(rid, surah) { return rid + ':' + surah; }
+function isDownloaded(rid, surah) {
+  if (!bridge) return false;
+  var d = downloads[dlKey(rid, surah)];
+  if (!d) {
+    var files = filesFor(surah);
+    var n = 0;
+    try { n = bridge.countDownloaded(rid, files.join(',')); } catch (e) {}
+    d = downloads[dlKey(rid, surah)] = { done: n, total: files.length, failed: false, running: false };
+  }
+  return d.done >= d.total;
+}
+function startDownload() {
+  var key = dlKey(state.reciter, state.surah);
+  var files = filesFor(state.surah);
+  downloads[key] = { done: 0, total: files.length, failed: false, running: true };
+  bridge.download(key, state.reciter, onlineBases(state.reciter).join(','), files.join(','));
+  renderDownload();
+}
+window.onDownloadProgress = function (key, done, total, failed) {
+  var finished = failed || done >= total;
+  downloads[key] = { done: done, total: total, failed: failed, running: !finished };
+  if (state.screen === 'reader' && key === dlKey(state.reciter, state.surah)) renderDownload();
+};
+function renderDownload() {
+  var b = $('dlBtn');
+  if (!bridge || isDownloaded(state.reciter, state.surah)) { if (!b.hidden) { b.hidden = true; } return; }
+  var d = downloads[dlKey(state.reciter, state.surah)];
+  b.hidden = false;
+  b.className = 'dl' + (d.failed ? ' error' : '');
+  b.disabled = d.running;
+  if (d.running) b.textContent = 'جاري تحميل السورة… ' + ar(Math.floor(100 * d.done / d.total)) + '٪';
+  else if (d.failed) b.textContent = 'تعذّر التحميل. تأكد من الإنترنت واضغط هنا مرة ثانية';
+  else b.innerHTML = DOWNLOAD_SVG + '<span>تحميل السورة للاستماع بدون إنترنت</span>';
+}
+
+// ---- word timings (window.TIMINGS[reciter][surah-1][ayah-1] = flat [firstWord, afterLastWord, startMs, endMs, ...])
+window.TIMINGS = window.TIMINGS || {};
+var timingRequested = {};
+function loadTimings(rid) {
+  if (timingRequested[rid]) return;
+  timingRequested[rid] = true;
+  var sc = document.createElement('script');
+  sc.src = 'timings/' + rid + '.js';
+  document.head.appendChild(sc);
+}
+function timingsFor(item) {
+  var t = window.TIMINGS[state.reciter];
+  return (t && t[item.s - 1] && t[item.s - 1][item.a - 1]) || null;
+}
 
 function show(id) {
   stop();
   state.screen = id;
-  ['home', 'edit', 'reader'].forEach(function (s) { $(s).hidden = s !== id; });
+  ['home', 'edit', 'reciters', 'reader'].forEach(function (s) { $(s).hidden = s !== id; });
   if (id === 'home') renderGrid();
   if (id === 'edit') renderList();
+  if (id === 'reciters') renderReciters();
   if (id === 'reader') { $('ayah').textContent = ''; renderReader(); }
   window.scrollTo(0, 0);
 }
 
 function renderGrid() {
+  $('reciterName').textContent = 'القارئ: ' + RECITERS[state.reciter].name;
   var g = $('grid');
   g.innerHTML = '';
   state.selected.slice().sort(function (a, b) { return a - b; }).forEach(function (n) {
@@ -234,6 +325,25 @@ function renderList() {
   });
 }
 
+function renderReciters() {
+  var l = $('reciterList');
+  l.innerHTML = '';
+  Object.keys(RECITERS).forEach(function (rid) {
+    var on = rid === state.reciter;
+    var b = document.createElement('button');
+    b.className = 'row' + (on ? ' on' : '');
+    b.setAttribute('aria-pressed', on);
+    b.innerHTML = '<span class="name">' + RECITERS[rid].name + '</span>' + (on ? '<span class="badge">' + CHECK_SVG + 'مختار</span>' : '');
+    b.onclick = function () {
+      state.reciter = rid;
+      save('reciter', rid);
+      loadTimings(rid);
+      renderReciters();
+    };
+    l.appendChild(b);
+  });
+}
+
 function openSurah(n) {
   state.surah = n;
   var items = itemsFor(n);
@@ -244,18 +354,35 @@ function openSurah(n) {
   show('reader');
 }
 
+// One span per word so the word being recited can be coloured; the ayah number stays as text for the font's ayah mark.
+function renderAyahText(item) {
+  var p = $('ayah');
+  p.textContent = '';
+  var num = (item.text.match(NUM_RE) || [''])[0];
+  var words = item.text.replace(NUM_RE, '').split(' ');
+  words.forEach(function (w, i) {
+    if (i) p.appendChild(document.createTextNode(' '));
+    var sp = document.createElement('span');
+    sp.className = 'w';
+    sp.textContent = w;
+    p.appendChild(sp);
+  });
+  if (num) p.appendChild(document.createTextNode(num));
+  p.dataset.key = item.s + ':' + item.a;
+  activeWords = null;
+  $('ayahCard').scrollTop = 0;
+}
+
 function renderReader() {
   var items = itemsFor(state.surah);
   var item = items[state.idx];
   var total = window.QURAN[state.surah - 1][1].length;
   $('surahTitle').textContent = 'سورة ' + window.QURAN[state.surah - 1][0];
+  if ($('ayah').dataset.key !== item.s + ':' + item.a || !$('ayah').firstChild) renderAyahText(item);
 
-  var p = $('ayah');
-  if (p.textContent !== item.text) {
-    p.textContent = item.text;
-    fitAyah();
-  }
-
+  var pct = Math.round(100 * item.num / total);
+  $('fill').style.width = pct + '%';
+  $('bar').setAttribute('aria-valuenow', pct);
   $('pos').textContent = item.num ? 'الآية ' + ar(item.num) + ' من ' + ar(total) : 'البسملة';
   var counts = item.num && state.repeat === 3;
   $('repLabel').textContent = counts ? 'المرة ' + ar(state.rep) + ' من ٣' : (item.num ? 'مرة واحدة' : '');
@@ -266,28 +393,59 @@ function renderReader() {
   $('ayahCard').classList.toggle('reading', state.playing);
   $('prev').disabled = state.idx === 0;
   $('next').disabled = state.idx >= items.length - 1;
+  renderDownload();
 
   var n = $('notice');
-  if (n.hidden === state.error) {
-    n.className = 'notice error';
-    n.textContent = 'تعذّر تشغيل صوت هذه الآية. اضغط زر التشغيل مرة ثانية.';
-    n.hidden = !state.error;
-    fitAyah();
-  }
+  n.className = 'notice error';
+  n.textContent = bridge ? 'تعذّر تشغيل الصوت. تحتاج اتصال إنترنت، أو حمّل السورة للاستماع بدونه.' : 'تعذّر تشغيل الصوت. تأكد من اتصال الإنترنت.';
+  n.hidden = !state.error;
 }
 
-// Largest font size (46px down to 24px) at which the whole ayah fits in the card. The few ayahs too long
-// even at 24px (such as Al-Baqarah 282) scroll inside the card, following the recitation.
-function fitAyah() {
-  if (state.screen !== 'reader') return;
-  var card = $('ayahCard'), p = $('ayah');
-  var size = 46;
-  p.style.fontSize = size + 'px';
-  while (size > 24 && card.scrollHeight > card.clientHeight + 1) {
-    size -= 2;
-    p.style.fontSize = size + 'px';
+// ---- following the reciter: colour the current word and keep it in view
+var activeWords = null;
+function highlight() {
+  var items = itemsFor(state.surah);
+  var segs = timingsFor(items[state.idx]);
+  var card = $('ayahCard');
+  if (!segs) {
+    // No word timings: scroll a long ayah evenly through the recording.
+    var range = card.scrollHeight - card.clientHeight;
+    if (range > 1 && audio.duration) card.scrollTop = range * Math.min(1, audio.currentTime / audio.duration);
+    return;
   }
-  card.scrollTop = 0;
+  var t = audio.currentTime * 1000;
+  var from = -1, to = -1;
+  for (var i = 0; i < segs.length; i += 4) {
+    if (segs[i + 2] <= t) { from = segs[i]; to = segs[i + 1]; } else break;
+  }
+  var key = from + '-' + to;
+  if (key === activeWords) return;
+  activeWords = key;
+  var spans = $('ayah').querySelectorAll('.w');
+  var first = null;
+  for (var j = 0; j < spans.length; j++) {
+    var on = j >= from && j < to;
+    spans[j].classList.toggle('on', on);
+    if (on && !first) first = spans[j];
+  }
+  if (first) {
+    var top = first.offsetTop, bottom = top + first.offsetHeight;
+    if (top < card.scrollTop + 8 || bottom > card.scrollTop + card.clientHeight - 8) {
+      card.scrollTo({ top: Math.max(0, top - card.clientHeight / 3), behavior: 'smooth' });
+    }
+  } else if (from < 0) {
+    card.scrollTop = 0;
+  }
+}
+function clearHighlight() {
+  activeWords = null;
+  var spans = $('ayah').querySelectorAll('.w.on');
+  for (var j = 0; j < spans.length; j++) spans[j].classList.remove('on');
+}
+function tickLoop() {
+  if (!state.playing) return;
+  if (!audio.paused) highlight();
+  requestAnimationFrame(tickLoop);
 }
 
 function remember() {
@@ -295,23 +453,24 @@ function remember() {
   save('places', state.places);
 }
 
-function playCurrent() {
+function playCurrent(keepSource) {
   var items = itemsFor(state.surah);
   var item = items[state.idx];
-  state.loading = true;
+  if (!keepSource) sourceIdx = 0;
   state.error = false;
-  audio.src = urlFor(item, baseIdx);
+  audio.src = sourcesFor(item)[sourceIdx];
   var p = audio.play();
   if (p && p.catch) p.catch(function () {});
   var nextItem = items[state.idx + 1];
-  if (nextItem) { preloader.src = urlFor(nextItem, baseIdx); preloader.load(); }
+  if (nextItem) { preloader.src = sourcesFor(nextItem)[0]; preloader.load(); }
   renderReader();
+  clearHighlight();
 }
 
 function stop() {
   audio.pause();
   state.playing = false;
-  state.loading = false;
+  clearHighlight();
 }
 
 function step(delta) {
@@ -324,18 +483,11 @@ function step(delta) {
   if (state.playing) playCurrent(); else renderReader();
 }
 
-audio.addEventListener('timeupdate', function () {
-  var card = $('ayahCard');
-  var range = card.scrollHeight - card.clientHeight;
-  if (range > 1 && audio.duration) card.scrollTop = range * Math.min(1, audio.currentTime / audio.duration);
-});
-audio.addEventListener('playing', function () {
-  if (state.loading) { state.loading = false; renderReader(); }
-});
 audio.addEventListener('ended', function () {
   if (!state.playing) return;
   var items = itemsFor(state.surah);
   var item = items[state.idx];
+  clearHighlight();
   if (item.num && state.rep < state.repeat) {
     state.rep++;
     audio.currentTime = 0;
@@ -358,8 +510,8 @@ audio.addEventListener('ended', function () {
 });
 audio.addEventListener('error', function () {
   if (!state.playing) return;
-  if (baseIdx < AUDIO_BASES.length - 1) { baseIdx++; playCurrent(); return; }
-  baseIdx = 0;
+  var item = itemsFor(state.surah)[state.idx];
+  if (sourceIdx < sourcesFor(item).length - 1) { sourceIdx++; playCurrent(true); return; }
   stop();
   state.error = true;
   renderReader();
@@ -367,6 +519,9 @@ audio.addEventListener('error', function () {
 
 $('done').onclick = function () { show('home'); };
 $('back').onclick = function () { show('home'); };
+$('reciterBtn').onclick = function () { show('reciters'); };
+$('recitersDone').onclick = function () { show('home'); };
+$('dlBtn').onclick = function () { startDownload(); };
 $('once').onclick = function () { state.repeat = 1; state.rep = 1; save('repeat', 1); renderReader(); };
 $('three').onclick = function () { state.repeat = 3; state.rep = 1; save('repeat', 3); renderReader(); };
 $('prev').onclick = function () { step(-1); };
@@ -376,6 +531,7 @@ $('play').onclick = function () {
   state.playing = true;
   state.rep = 1;
   playCurrent();
+  requestAnimationFrame(tickLoop);
 };
 
 // Called from the Android activity.
@@ -388,10 +544,7 @@ window.appPaused = function () {
   if (state.playing) { stop(); renderReader(); }
 };
 
-window.addEventListener('resize', fitAyah);
-// The Quran font loads only when first used, so load it up front and refit once it is ready.
-if (document.fonts && document.fonts.load) document.fonts.load("46px 'Uthmanic Hafs'", 'بسم').then(fitAyah, function () {});
-
+loadTimings(state.reciter);
 show('home');
 </script>
 </body>

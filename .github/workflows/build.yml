@@ -23,24 +23,20 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      # The recitation is bundled into the APK so the app works without internet.
-      - uses: actions/cache@v4
-        with:
-          path: app/src/main/assets/www/audio
-          key: basfar-audio-v1
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Download recitation
+      # Word-by-word timings so the app can colour the word being recited.
+      - name: Word timings
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if curl -sfI https://everyayah.com/data/Abdullah_Basfar_32kbps/001001.mp3 > /dev/null; then
-            folder=Abdullah_Basfar_32kbps
-          else
-            folder=Abdullah_Basfar_64kbps
-          fi
-          node scripts/fetch-audio.mjs "$folder"
+          mkdir -p align
+          gh release download -R cpfair/quran-align -D align || echo "could not download quran-align data"
+          for z in align/*.zip; do [ -f "$z" ] && unzip -q -o "$z" -d align; done
+          ls -la align
+          node scripts/build-timings.mjs align
 
       - name: Build
         run: gradle assembleDebug --no-daemon
@@ -59,7 +55,7 @@ jobs:
         with:
           tag_name: latest
           name: حفظ القرآن (آخر نسخة)
-          body: حمّل ملف quran-hifz.apk وثبّته على جوال الأندرويد. يعمل بدون إنترنت.
+          body: حمّل ملف quran-hifz.apk وثبّته على جوال الأندرويد. حمّل السور من داخل التطبيق لتستمع لها بدون إنترنت.
           prerelease: false
           make_latest: true
           files: quran-hifz.apk
