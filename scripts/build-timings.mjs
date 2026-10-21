@@ -1,0 +1,96 @@
+// Converts quran-align word timings (github.com/cpfair/quran-align, CC-BY-4.0) into
+// app/src/main/assets/www/timings/<reciter>.js for word-by-word highlighting.
+// Usage: node scripts/build-timings.mjs <folder with the quran-align .json files>
+//
+// quran-align numbers words by splitting Tanzil's Uthmani text on spaces, where the hizb sign ۞ and the
+// sajda sign ۩ are words of their own. In the King Fahd text the app shows, ۞ is joined to the next word
+// and ۩ to the previous one, so indices are mapped across before writing.
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+
+// App reciter id -> quran-align file (named after the everyayah.com folder it was timed on).
+const RECITERS = {
+  husary_muallim: 'Husary_Muallim_128kbps.json',
+  husary: 'Husary_64kbps.json',
+  minshawy_murattal: 'Minshawy_Murattal_128kbps.json',
+  minshawy_mujawwad: 'Minshawy_Mujawwad_192kbps.json',
+  abdulbasit_murattal: 'Abdul_Basit_Murattal_64kbps.json',
+  abdulbasit_mujawwad: 'Abdul_Basit_Mujawwad_128kbps.json',
+  alafasy: 'Alafasy_128kbps.json',
+  sudais: 'Abdurrahmaan_As-Sudais_192kbps.json',
+  shuraim: 'Saood_ash-Shuraym_128kbps.json',
+  shatri: 'Abu_Bakr_Ash-Shaatree_128kbps.json',
+  rifai: 'Hani_Rifai_192kbps.json',
+  tablawi: 'Mohammad_al_Tablaway_128kbps.json',
+};
+const NUM_RE = /[\s ]*[٠-٩]+$/;
+
+const ctx = { window: {} };
+vm.runInNewContext(fs.readFileSync('app/src/main/assets/www/quran.js', 'utf8'), ctx);
+const QURAN = ctx.window.QURAN;
+
+function walk(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]);
+}
+const jsons = walk(process.argv[2] || 'align').filter((f) => f.endsWith('.json'));
+console.log('timing files:', jsons.map((f) => path.basename(f)).join(', ') || 'none');
+if (!jsons.length) { console.error('no quran-align .json files found'); process.exit(1); }
+
+// Some quran-align files have the aligner's crash messages pasted into the middle of the JSON array
+// (Sudais does), so if the file does not parse, keep every ayah object that does.
+function readEntries(text) {
+  try { return JSON.parse(text); } catch {}
+  const entries = [];
+  const starts = /\{\s*"surah"/g;
+  let m, from = 0;
+  while ((m = starts.exec(text))) {
+    if (m.index < from) continue;
+    let depth = 0;
+    for (let i = m.index; i < text.length; i++) {
+      if (text[i] === '{') depth++;
+      else if (text[i] === '}' && --depth === 0) {
+        try {
+          entries.push(JSON.parse(text.slice(m.index, i + 1)));
+          from = i + 1;
+        } catch {}
+        break;
+      }
+    }
+  }
+  return entries;
+}
+
+const outDir = 'app/src/main/assets/www/timings';
+fs.mkdirSync(outDir, { recursive: true });
+
+for (const [rid, name] of Object.entries(RECITERS)) {
+  const file = jsons.find((f) => path.basename(f) === name);
+  if (!file) { console.log(`${rid}: ${name} missing, highlighting off`); continue; }
+  const data = readEntries(fs.readFileSync(file, 'utf8'));
+  const out = QURAN.map((s) => s[1].map(() => 0));
+  let kept = 0, dropped = 0;
+  for (const entry of data) {
+    const text = QURAN[entry.surah - 1]?.[1][entry.ayah - 1];
+    if (!text || !Array.isArray(entry.segments)) continue;
+    const words = text.replace(NUM_RE, '').split(' ');
+    const map = [];
+    words.forEach((w, i) => {
+      if (i === 0 && w.startsWith('۞')) map.push(0);
+      map.push(i);
+      if (w.includes('۩')) map.push(i);
+    });
+    const flat = [];
+    let ok = true;
+    for (const [ws, we, start, end] of entry.segments) {
+      if (ws < 0 || we <= ws || we > map.length) { ok = false; break; }
+      flat.push(map[ws], map[we - 1] + 1, Math.round(start), Math.round(end));
+    }
+    if (ok && flat.length) { out[entry.surah - 1][entry.ayah - 1] = flat; kept++; } else dropped++;
+  }
+  fs.writeFileSync(path.join(outDir, rid + '.js'),
+    `// Word timings for ${rid} from quran-align (${path.basename(file)}), CC-BY-4.0.\n` +
+    `window.TIMINGS = window.TIMINGS || {};\nwindow.TIMINGS[${JSON.stringify(rid)}] = ${JSON.stringify(out)};\n`);
+  console.log(`${rid}: ${path.basename(file)} -> ${kept} ayahs with timings, ${dropped} dropped`);
+}

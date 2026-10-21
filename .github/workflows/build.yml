@@ -1,0 +1,62 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, claude/android-app]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Word-by-word timings so the app can colour the word being recited.
+      - name: Word timings
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p align
+          gh release list -R cpfair/quran-align --limit 5
+          gh release download -R cpfair/quran-align -D align --pattern '*'
+          for z in align/*.zip; do [ -f "$z" ] && unzip -q -o "$z" -d align; done
+          ls -la align
+          node scripts/build-timings.mjs align
+
+      - name: Build
+        run: gradle assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk quran-hifz.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quran-hifz-apk
+          path: quran-hifz.apk
+
+      # A fixed "latest" release so the APK has one stable download link for the phone.
+      - name: Publish latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: حفظ القرآن (آخر نسخة)
+          body: حمّل ملف quran-hifz.apk وثبّته على جوال الأندرويد. حمّل السور من داخل التطبيق لتستمع لها بدون إنترنت.
+          prerelease: false
+          make_latest: true
+          files: quran-hifz.apk
